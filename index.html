@@ -556,7 +556,7 @@
     document.querySelectorAll(".preset-select").forEach(populatePresetSelect);
   }
 
-  const state = { search: "", tag: null, untaggedOnly: false };
+  const state = { search: "", tags: new Set(), untaggedOnly: false };
 
   const grid = document.getElementById("grid");
   const emptyState = document.getElementById("emptyState");
@@ -569,23 +569,28 @@
 
   function renderTagFilterChips() {
     const tags = allTagsInUse();
-    if (state.tag && !tags.some(([t]) => t === state.tag)) state.tag = null;
+    const validTagNames = new Set(tags.map(([t]) => t));
+    state.tags.forEach(t => { if (!validTagNames.has(t)) state.tags.delete(t); });
     tagFilterChips.innerHTML = "";
     if (!tags.length) return;
     const allChip = document.createElement("button");
     allChip.type = "button";
     allChip.className = "chip";
-    allChip.setAttribute("aria-pressed", state.tag === null ? "true" : "false");
-    allChip.textContent = "All tags";
-    allChip.addEventListener("click", () => { state.tag = null; renderTagFilterChips(); render(); });
+    allChip.setAttribute("aria-pressed", state.tags.size === 0 ? "true" : "false");
+    allChip.textContent = state.tags.size === 0 ? "All tags" : "Clear (" + state.tags.size + ")";
+    allChip.addEventListener("click", () => { state.tags.clear(); renderTagFilterChips(); render(); });
     tagFilterChips.appendChild(allChip);
     tags.forEach(([tag, count]) => {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chip";
-      chip.setAttribute("aria-pressed", state.tag === tag ? "true" : "false");
+      chip.setAttribute("aria-pressed", state.tags.has(tag) ? "true" : "false");
       chip.innerHTML = tag.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])) + '<span class="tag-count">' + count + "</span>";
-      chip.addEventListener("click", () => { state.tag = (state.tag === tag ? null : tag); renderTagFilterChips(); render(); });
+      chip.addEventListener("click", () => {
+        if (state.tags.has(tag)) state.tags.delete(tag); else state.tags.add(tag);
+        renderTagFilterChips();
+        render();
+      });
       tagFilterChips.appendChild(chip);
     });
   }
@@ -737,7 +742,10 @@
   }
 
   function matches(track) {
-    if (state.tag && !getTags(track.vid).includes(state.tag)) return false;
+    if (state.tags.size) {
+      const trackTags = getTags(track.vid);
+      if (!trackTags.some(t => state.tags.has(t))) return false;
+    }
     if (state.untaggedOnly && getTags(track.vid).length) return false;
     if (state.search) {
       const q = state.search.toLowerCase();
