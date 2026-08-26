@@ -283,27 +283,7 @@
     left: 10px;
     z-index: 2;
   }
-  .card-delete-btn {
-    position: absolute;
-    top: 44px;
-    left: 10px;
-    z-index: 2;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 0;
-    background: rgba(0,0,0,.55);
-    color: #fff;
-    font-size: 13px;
-    line-height: 1;
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-    transition: background .15s, transform .15s;
-  }
-  .card-delete-btn:hover { background: #c0392b; transform: scale(1.08); }
-  .card-delete-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-  .lyrics-btn, .hide-btn {
+  .lyrics-btn, .hide-btn, .card-delete-btn {
     position: absolute;
     top: 8px;
     z-index: 2;
@@ -313,7 +293,7 @@
     border: 0;
     background: rgba(0,0,0,.55);
     color: #fff;
-    font-size: 15px;
+    font-size: 14px;
     line-height: 1;
     cursor: pointer;
     display: grid;
@@ -323,9 +303,11 @@
   }
   .lyrics-btn { right: 8px; }
   .hide-btn { right: 44px; }
+  .card-delete-btn { right: 80px; }
+  .card-delete-btn:hover { background: #c0392b; transform: scale(1.08); }
   .lyrics-btn:hover { background: var(--accent-3); transform: scale(1.08); }
   .hide-btn:hover { background: var(--accent-2); transform: scale(1.08); }
-  .lyrics-btn:focus-visible, .hide-btn:focus-visible {
+  .lyrics-btn:focus-visible, .hide-btn:focus-visible, .card-delete-btn:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
@@ -1029,6 +1011,8 @@
     hideBtn.title = "Unpin from the board";
     hideBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      const ok = window.confirm("Unpin \"" + track.title + "\" by " + track.artist + "? It'll move to the Pinned strip at the bottom of the page, where you can bring it back or delete it permanently.");
+      if (!ok) return;
       hideTrack(track.vid);
     });
     media.appendChild(hideBtn);
