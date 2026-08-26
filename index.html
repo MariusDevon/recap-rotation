@@ -682,8 +682,15 @@
     return base.concat(custom);
   }
   function extractYouTubeId(url) {
-    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    return m ? m[1] : null;
+    let m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    m = url.match(/youtube\.com\/(?:embed|shorts)\/([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    m = url.match(/[?&]list=RD([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    return null;
   }
   async function addVideoFlow() {
     const url = window.prompt("Paste a YouTube video URL:");
