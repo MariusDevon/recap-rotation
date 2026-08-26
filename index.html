@@ -283,6 +283,30 @@
     left: 10px;
     z-index: 2;
   }
+  .lyrics-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(0,0,0,.55);
+    color: #fff;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background .15s, transform .15s;
+    text-decoration: none;
+  }
+  .lyrics-btn:hover { background: var(--accent-3); transform: scale(1.08); }
+  .lyrics-btn:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
   .media {
     position: relative;
     aspect-ratio: 16/9;
@@ -635,6 +659,17 @@
       media.appendChild(iframe);
     });
     media.appendChild(watchTile);
+
+    const lyricsBtn = document.createElement("a");
+    lyricsBtn.className = "lyrics-btn";
+    lyricsBtn.href = "https://www.google.com/search?q=" + encodeURIComponent(track.artist + " " + track.title + " lyrics");
+    lyricsBtn.target = "_blank";
+    lyricsBtn.rel = "noopener noreferrer";
+    lyricsBtn.textContent = "\u{1F444}";
+    lyricsBtn.setAttribute("aria-label", "Search for lyrics for " + track.title + " by " + track.artist);
+    lyricsBtn.title = "Search lyrics";
+    lyricsBtn.addEventListener("click", (e) => e.stopPropagation());
+    media.appendChild(lyricsBtn);
 
     const body = document.createElement("div");
     body.className = "body";
