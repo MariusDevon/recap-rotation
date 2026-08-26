@@ -364,6 +364,42 @@
     place-items: center;
   }
   .unpin-btn:hover { background: var(--accent-3); color: var(--bg); }
+  .delete-btn {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--text-dim);
+    border-radius: 50%;
+    font-size: 0.72rem;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+  .delete-btn:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
+  .add-video-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 0;
+    background: var(--accent);
+    color: #1a1305;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,.3);
+    transition: transform .15s;
+  }
+  .add-video-btn:hover { transform: scale(1.08); }
+  .add-video-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   .media {
     position: relative;
     aspect-ratio: 16/9;
@@ -559,6 +595,8 @@
   }
 </style>
 
+<button type="button" class="add-video-btn" id="addVideoBtn" aria-label="Add a YouTube video by URL" title="Add a video">+</button>
+
 <div class="wrap">
   <div class="hero">
     <div class="dial" aria-hidden="true"><span class="dial-num" id="dialNum">133</span></div>
@@ -623,21 +661,63 @@
     } catch (e) {}
   }
 
-  const PASSCODE = "1324";
-  function getCookie(name) {
-    const m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+  const CUSTOM_KEY = "rotation:custom";
+  const DELETED_KEY = "rotation:deleted";
+  function getCustomTracks() {
+    try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function setCustomTracks(arr) {
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr)); } catch (e) {}
+  }
+  function getDeleted() {
+    try { return new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || "[]")); } catch (e) { return new Set(); }
+  }
+  function setDeleted(set) {
+    try { localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(set))); } catch (e) {}
+  }
+  function allTracks() {
+    const deleted = getDeleted();
+    const base = TRACKS.filter(t => !deleted.has(t.vid));
+    const custom = getCustomTracks().filter(t => !deleted.has(t.vid));
+    return base.concat(custom);
+  }
+  function extractYouTubeId(url) {
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
     return m ? m[1] : null;
   }
-  function isUnlocked() { return getCookie("rotation_unlocked") === "1"; }
-  function unlock() { document.cookie = "rotation_unlocked=1; max-age=" + (365 * 24 * 60 * 60) + "; path=/; samesite=lax"; }
-  function guarded(fn) {
-    return function (...args) {
-      if (isUnlocked()) return fn.apply(this, args);
-      const code = window.prompt("Enter passcode to edit tags or pin tracks:");
-      if (code === null) return;
-      if (code === PASSCODE) { unlock(); return fn.apply(this, args); }
-      window.alert("Incorrect passcode.");
-    };
+  async function addVideoFlow() {
+    const url = window.prompt("Paste a YouTube video URL:");
+    if (!url) return;
+    const vid = extractYouTubeId(url.trim());
+    if (!vid) { window.alert("That doesn't look like a valid YouTube link."); return; }
+
+    const deleted = getDeleted();
+    const existing = allTracks().find(t => t.vid === vid);
+    if (existing && !deleted.has(vid)) { window.alert("That video is already in the list."); return; }
+    if (deleted.has(vid)) { deleted.delete(vid); setDeleted(deleted); }
+
+    let title = "Untitled";
+    let artist = "Unknown artist";
+    try {
+      const res = await fetch("https://www.youtube.com/oembed?url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + vid) + "&format=json");
+      if (!res.ok) throw new Error("oembed failed");
+      const data = await res.json();
+      title = data.title || title;
+      artist = data.author_name || artist;
+    } catch (e) {
+      title = window.prompt("Couldn't fetch the title automatically — enter it yourself:", "") || title;
+      artist = window.prompt("Enter the artist name:", "") || artist;
+    }
+
+    const custom = getCustomTracks();
+    if (!custom.some(t => t.vid === vid)) {
+      custom.push({ vid, title, artist });
+      setCustomTracks(custom);
+    }
+    refreshTotals();
+    renderTagFilterChips();
+    renderHiddenStrip();
+    render();
   }
 
   const HIDDEN_KEY = "rotation:hidden";
@@ -667,7 +747,7 @@
 
   function allTagData() {
     const out = {};
-    TRACKS.forEach(t => {
+    allTracks().forEach(t => {
       const tags = getTags(t.vid);
       if (tags.length) out[t.vid] = { title: t.title, artist: t.artist, tags };
     });
@@ -675,7 +755,7 @@
   }
   function allTagsInUse() {
     const counts = new Map();
-    TRACKS.forEach(t => {
+    allTracks().forEach(t => {
       getTags(t.vid).forEach(tag => counts.set(tag, (counts.get(tag) || 0) + 1));
     });
     return Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
@@ -800,11 +880,11 @@
     hideBtn.type = "button";
     hideBtn.className = "hide-btn";
     hideBtn.textContent = "\u{1F4CC}";
-    hideBtn.setAttribute("aria-label", "Pin " + track.title + " by " + track.artist + " to the hidden shelf");
-    hideBtn.title = "Pin (hide from list)";
+    hideBtn.setAttribute("aria-label", "Unpin " + track.title + " by " + track.artist + " from the board");
+    hideBtn.title = "Unpin from the board";
     hideBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      guarded(() => hideTrack(track.vid))();
+      hideTrack(track.vid);
     });
     media.appendChild(hideBtn);
 
@@ -859,11 +939,11 @@
         rm.type = "button";
         rm.setAttribute("aria-label", "Remove tag " + tag);
         rm.textContent = "×";
-        rm.addEventListener("click", guarded(() => {
+        rm.addEventListener("click", () => {
           const next = getTags(track.vid).filter(t => t !== tag);
           setTags(track.vid, next);
           onTagChange();
-        }));
+        });
         chip.appendChild(label);
         chip.appendChild(rm);
         tagChips.appendChild(chip);
@@ -888,16 +968,15 @@
       }
       tagInput.value = "";
     }
-    const guardedCommitCustomTag = guarded(commitCustomTag);
     tagInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") guardedCommitCustomTag();
+      if (e.key === "Enter") commitCustomTag();
     });
     const tagAddBtn = document.createElement("button");
     tagAddBtn.type = "button";
     tagAddBtn.className = "tag-add-btn";
     tagAddBtn.textContent = "Add";
     tagAddBtn.setAttribute("aria-label", "Add custom tag for " + track.title);
-    tagAddBtn.addEventListener("click", guardedCommitCustomTag);
+    tagAddBtn.addEventListener("click", commitCustomTag);
     tagRow.appendChild(tagInput);
     tagRow.appendChild(tagAddBtn);
 
@@ -905,7 +984,7 @@
     presetSelect.className = "preset-select";
     presetSelect.setAttribute("aria-label", "Quick-add a genre tag for " + track.title);
     populatePresetSelect(presetSelect);
-    presetSelect.addEventListener("change", guarded(() => {
+    presetSelect.addEventListener("change", () => {
       const p = presetSelect.value;
       if (!p) return;
       const tags = getTags(track.vid);
@@ -915,7 +994,7 @@
         onTagChange();
       }
       presetSelect.value = "";
-    }));
+    });
 
     tagbox.appendChild(tagChips);
     tagbox.appendChild(tagRow);
@@ -945,22 +1024,24 @@
   }
 
   function render() {
+    const all = allTracks();
     const hidden = getHidden();
-    const visibleTotal = TRACKS.length - hidden.size;
-    const filtered = TRACKS.filter(t => matches(t, hidden));
+    const visibleTotal = all.length - hidden.size;
+    const filtered = all.filter(t => matches(t, hidden));
     grid.innerHTML = "";
-    filtered.forEach((t, i) => grid.appendChild(makeCard(t, TRACKS.indexOf(t))));
+    filtered.forEach(t => grid.appendChild(makeCard(t, all.indexOf(t))));
     emptyState.hidden = filtered.length !== 0;
     countPill.textContent = filtered.length + " / " + visibleTotal + " shown";
   }
 
   function renderHiddenStrip() {
+    const all = allTracks();
     const hidden = getHidden();
     if (!hidden.size) { hiddenStrip.innerHTML = ""; return; }
     const row = document.createElement("div");
     row.className = "hidden-row";
     Array.from(hidden).forEach(vid => {
-      const track = TRACKS.find(t => t.vid === vid);
+      const track = all.find(t => t.vid === vid);
       if (!track) return;
       const item = document.createElement("div");
       item.className = "hidden-item";
@@ -980,12 +1061,35 @@
       unpinBtn.type = "button";
       unpinBtn.className = "unpin-btn";
       unpinBtn.textContent = "\u{1F4CC}";
-      unpinBtn.setAttribute("aria-label", "Unpin " + track.title + " by " + track.artist + " — put it back on the board");
+      unpinBtn.setAttribute("aria-label", "Pin " + track.title + " by " + track.artist + " back to the board");
       unpinBtn.title = "Pin back to the board";
-      unpinBtn.addEventListener("click", guarded(() => unhideTrack(vid)));
+      unpinBtn.addEventListener("click", () => unhideTrack(vid));
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "delete-btn";
+      deleteBtn.textContent = "\u{1F5D1}️";
+      deleteBtn.setAttribute("aria-label", "Delete " + track.title + " by " + track.artist + " permanently");
+      deleteBtn.title = "Delete permanently";
+      deleteBtn.addEventListener("click", () => {
+        const ok = window.confirm("Delete \"" + track.title + "\" by " + track.artist + " permanently? This can't be undone.");
+        if (!ok) return;
+        const d = getDeleted();
+        d.add(vid);
+        setDeleted(d);
+        const h = getHidden();
+        h.delete(vid);
+        setHidden(h);
+        const custom = getCustomTracks().filter(t => t.vid !== vid);
+        setCustomTracks(custom);
+        refreshTotals();
+        renderTagFilterChips();
+        renderHiddenStrip();
+        render();
+      });
       item.appendChild(thumb);
       item.appendChild(text);
       item.appendChild(unpinBtn);
+      item.appendChild(deleteBtn);
       row.appendChild(item);
     });
     hiddenStrip.innerHTML = "";
@@ -993,8 +1097,14 @@
   }
 
   function refreshStats() {
-    const tagged = TRACKS.filter(t => getTags(t.vid).length > 0).length;
+    const tagged = allTracks().filter(t => getTags(t.vid).length > 0).length;
     statTagged.textContent = tagged;
+  }
+  function refreshTotals() {
+    const all = allTracks();
+    statTotal.textContent = all.length;
+    statArtists.textContent = new Set(all.map(t => t.artist)).size;
+    dialNum.textContent = all.length;
   }
 
   document.getElementById("searchInput").addEventListener("input", (e) => {
@@ -1034,11 +1144,11 @@
     }
   });
 
-  statTotal.textContent = TRACKS.length;
-  statArtists.textContent = new Set(TRACKS.map(t => t.artist)).size;
-  dialNum.textContent = TRACKS.length;
+  refreshTotals();
   TRACKS.forEach(t => { if (!getTags(t.vid).length && SEED_TAGS[t.vid]) setTags(t.vid, SEED_TAGS[t.vid]); });
   refreshStats();
+
+  document.getElementById("addVideoBtn").addEventListener("click", addVideoFlow);
 
   renderTagFilterChips();
   renderHiddenStrip();
