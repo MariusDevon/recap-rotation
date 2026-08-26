@@ -810,6 +810,27 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
+  async function exportAllData() {
+    const filename = "marius-music-data.json";
+    const dataStr = JSON.stringify(gatherExportData(), null, 2);
+    let downloads = null;
+    try {
+      if (window.claude && typeof window.claude.use === "function") {
+        downloads = await window.claude.use("downloads");
+      }
+    } catch (e) {}
+    if (downloads) {
+      try {
+        await downloads.save({ filename, data: dataStr });
+        showToast("Data exported");
+      } catch (err) {
+        if (err && err.code === "declined") return;
+        downloadJSON(gatherExportData(), filename);
+      }
+      return;
+    }
+    downloadJSON(gatherExportData(), filename);
+  }
   function importAllData(file) {
     const reader = new FileReader();
     reader.onload = () => {
@@ -1268,9 +1289,7 @@
     }
   });
 
-  document.getElementById("exportBtn").addEventListener("click", () => {
-    downloadJSON(gatherExportData(), "marius-music-data.json");
-  });
+  document.getElementById("exportBtn").addEventListener("click", exportAllData);
   const importFileInput = document.getElementById("importFile");
   document.getElementById("importBtn").addEventListener("click", () => importFileInput.click());
   importFileInput.addEventListener("change", () => {
