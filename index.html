@@ -901,9 +901,6 @@
   function renderHiddenStrip() {
     const hidden = getHidden();
     if (!hidden.size) { hiddenStrip.innerHTML = ""; return; }
-    const label = document.createElement("p");
-    label.className = "hidden-strip-label";
-    label.textContent = "\u{1F4CC} Pinned (" + hidden.size + ")";
     const row = document.createElement("div");
     row.className = "hidden-row";
     Array.from(hidden).forEach(vid => {
@@ -926,9 +923,9 @@
       const unpinBtn = document.createElement("button");
       unpinBtn.type = "button";
       unpinBtn.className = "unpin-btn";
-      unpinBtn.textContent = "×";
-      unpinBtn.setAttribute("aria-label", "Unpin " + track.title + " by " + track.artist);
-      unpinBtn.title = "Unpin";
+      unpinBtn.textContent = "\u{1F4CC}";
+      unpinBtn.setAttribute("aria-label", "Unpin " + track.title + " by " + track.artist + " — put it back on the board");
+      unpinBtn.title = "Pin back to the board";
       unpinBtn.addEventListener("click", () => unhideTrack(vid));
       item.appendChild(thumb);
       item.appendChild(text);
@@ -936,7 +933,6 @@
       row.appendChild(item);
     });
     hiddenStrip.innerHTML = "";
-    hiddenStrip.appendChild(label);
     hiddenStrip.appendChild(row);
   }
 
