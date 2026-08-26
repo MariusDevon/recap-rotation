@@ -283,10 +283,9 @@
     left: 10px;
     z-index: 2;
   }
-  .lyrics-btn {
+  .lyrics-btn, .hide-btn {
     position: absolute;
     top: 8px;
-    right: 8px;
     z-index: 2;
     width: 28px;
     height: 28px;
@@ -302,11 +301,65 @@
     transition: background .15s, transform .15s;
     text-decoration: none;
   }
+  .lyrics-btn { right: 8px; }
+  .hide-btn { right: 44px; }
   .lyrics-btn:hover { background: var(--accent-3); transform: scale(1.08); }
-  .lyrics-btn:focus-visible {
+  .hide-btn:hover { background: var(--accent-2); transform: scale(1.08); }
+  .lyrics-btn:focus-visible, .hide-btn:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+
+  .hidden-strip {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+  .hidden-strip:empty { display: none; }
+  .hidden-strip-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 12px;
+  }
+  .hidden-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .hidden-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 6px 5px 5px;
+    font-size: 0.78rem;
+    max-width: 300px;
+  }
+  .hidden-item img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: none;
+  }
+  .hidden-item .hi-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hidden-item .hi-artist { color: var(--text-dim); }
+  .hidden-item button {
+    flex: none;
+    border: 1px solid var(--accent-2);
+    background: transparent;
+    color: var(--accent-2);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+  .hidden-item button:hover { background: var(--accent-2); color: var(--bg); }
   .media {
     position: relative;
     aspect-ratio: 16/9;
@@ -512,6 +565,8 @@
   <div class="grid" id="grid"></div>
   <div class="empty" id="emptyState" hidden>No tracks match that search.</div>
 
+  <div class="hidden-strip" id="hiddenStrip"></div>
+
   <footer>
     <span>Tags save privately to this browser (localStorage) &mdash; nothing is sent anywhere.</span>
     <span>Built from your YouTube Music library, 2026.</span>
@@ -541,6 +596,32 @@
       else localStorage.removeItem(TAG_PREFIX + vid);
     } catch (e) {}
   }
+
+  const HIDDEN_KEY = "rotation:hidden";
+  function getHidden() {
+    try {
+      const raw = localStorage.getItem(HIDDEN_KEY);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch (e) { return new Set(); }
+  }
+  function setHidden(set) {
+    try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(set))); } catch (e) {}
+  }
+  function hideTrack(vid) {
+    const h = getHidden();
+    h.add(vid);
+    setHidden(h);
+    renderHiddenStrip();
+    render();
+  }
+  function unhideTrack(vid) {
+    const h = getHidden();
+    h.delete(vid);
+    setHidden(h);
+    renderHiddenStrip();
+    render();
+  }
+
   function allTagData() {
     const out = {};
     TRACKS.forEach(t => {
@@ -584,6 +665,7 @@
 
   const grid = document.getElementById("grid");
   const emptyState = document.getElementById("emptyState");
+  const hiddenStrip = document.getElementById("hiddenStrip");
   const countPill = document.getElementById("countPill");
   const statTotal = document.getElementById("statTotal");
   const statTagged = document.getElementById("statTagged");
@@ -670,6 +752,18 @@
     lyricsBtn.title = "Search lyrics";
     lyricsBtn.addEventListener("click", (e) => e.stopPropagation());
     media.appendChild(lyricsBtn);
+
+    const hideBtn = document.createElement("button");
+    hideBtn.type = "button";
+    hideBtn.className = "hide-btn";
+    hideBtn.textContent = "\u{1F648}";
+    hideBtn.setAttribute("aria-label", "Hide " + track.title + " by " + track.artist);
+    hideBtn.title = "Hide this track";
+    hideBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hideTrack(track.vid);
+    });
+    media.appendChild(hideBtn);
 
     const body = document.createElement("div");
     body.className = "body";
@@ -776,7 +870,8 @@
     return card;
   }
 
-  function matches(track) {
+  function matches(track, hidden) {
+    if (hidden.has(track.vid)) return false;
     if (state.tags.size) {
       const trackTags = getTags(track.vid);
       if (!trackTags.some(t => state.tags.has(t))) return false;
@@ -790,11 +885,52 @@
   }
 
   function render() {
-    const filtered = TRACKS.filter(matches);
+    const hidden = getHidden();
+    const visibleTotal = TRACKS.length - hidden.size;
+    const filtered = TRACKS.filter(t => matches(t, hidden));
     grid.innerHTML = "";
     filtered.forEach((t, i) => grid.appendChild(makeCard(t, TRACKS.indexOf(t))));
     emptyState.hidden = filtered.length !== 0;
-    countPill.textContent = filtered.length + " / " + TRACKS.length + " shown";
+    countPill.textContent = filtered.length + " / " + visibleTotal + " shown";
+  }
+
+  function renderHiddenStrip() {
+    const hidden = getHidden();
+    if (!hidden.size) { hiddenStrip.innerHTML = ""; return; }
+    const label = document.createElement("p");
+    label.className = "hidden-strip-label";
+    label.textContent = "Hidden (" + hidden.size + ")";
+    const row = document.createElement("div");
+    row.className = "hidden-row";
+    Array.from(hidden).forEach(vid => {
+      const track = TRACKS.find(t => t.vid === vid);
+      if (!track) return;
+      const item = document.createElement("div");
+      item.className = "hidden-item";
+      const thumb = document.createElement("img");
+      thumb.src = "https://i.ytimg.com/vi/" + encodeURIComponent(vid) + "/default.jpg";
+      thumb.alt = "";
+      thumb.loading = "lazy";
+      thumb.referrerPolicy = "no-referrer";
+      const text = document.createElement("span");
+      text.className = "hi-text";
+      text.textContent = track.title + " — ";
+      const artistSpan = document.createElement("span");
+      artistSpan.className = "hi-artist";
+      artistSpan.textContent = track.artist;
+      text.appendChild(artistSpan);
+      const unpinBtn = document.createElement("button");
+      unpinBtn.type = "button";
+      unpinBtn.textContent = "Unpin";
+      unpinBtn.addEventListener("click", () => unhideTrack(vid));
+      item.appendChild(thumb);
+      item.appendChild(text);
+      item.appendChild(unpinBtn);
+      row.appendChild(item);
+    });
+    hiddenStrip.innerHTML = "";
+    hiddenStrip.appendChild(label);
+    hiddenStrip.appendChild(row);
   }
 
   function refreshStats() {
@@ -846,5 +982,6 @@
   refreshStats();
 
   renderTagFilterChips();
+  renderHiddenStrip();
   render();
 </script>
