@@ -291,6 +291,14 @@
     display: flex;
     flex-direction: column;
   }
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes flashHighlight {
+      0%, 100% { box-shadow: 0 0 0 0 transparent; border-color: var(--line); }
+      15%, 45%, 75% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent); border-color: var(--accent); }
+      30%, 60%, 90% { box-shadow: 0 0 0 0 transparent; border-color: var(--line); }
+    }
+    .card.just-added { animation: flashHighlight 2.4s ease-in-out 1; }
+  }
   .card-idx {
     position: absolute;
     font-family: var(--font-mono);
@@ -716,6 +724,8 @@
     } catch (e) {}
   }
 
+  let justAddedVid = null;
+  let justAddedTimer = null;
   const CUSTOM_KEY = "rotation:custom";
   const DELETED_KEY = "rotation:deleted";
   function getCustomTracks() {
@@ -734,7 +744,7 @@
     const deleted = getDeleted();
     const base = TRACKS.filter(t => !deleted.has(t.vid));
     const custom = getCustomTracks().filter(t => !deleted.has(t.vid));
-    return base.concat(custom);
+    return custom.concat(base);
   }
   function extractYouTubeId(url) {
     let m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
@@ -773,9 +783,12 @@
 
     const custom = getCustomTracks();
     if (!custom.some(t => t.vid === vid)) {
-      custom.push({ vid, title, artist });
+      custom.unshift({ vid, title, artist });
       setCustomTracks(custom);
     }
+    justAddedVid = vid;
+    clearTimeout(justAddedTimer);
+    justAddedTimer = setTimeout(() => { justAddedVid = null; }, 2600);
     refreshTotals();
     renderTagFilterChips();
     renderHiddenStrip();
@@ -974,7 +987,7 @@
 
   function makeCard(track, idx, artistCounts) {
     const card = document.createElement("article");
-    card.className = "card";
+    card.className = "card" + (track.vid === justAddedVid ? " just-added" : "");
 
     const media = document.createElement("div");
     media.className = "media";
