@@ -601,6 +601,23 @@
     } catch (e) {}
   }
 
+  const PASSCODE = "1324";
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+    return m ? m[1] : null;
+  }
+  function isUnlocked() { return getCookie("rotation_unlocked") === "1"; }
+  function unlock() { document.cookie = "rotation_unlocked=1; max-age=" + (365 * 24 * 60 * 60) + "; path=/; samesite=lax"; }
+  function guarded(fn) {
+    return function (...args) {
+      if (isUnlocked()) return fn.apply(this, args);
+      const code = window.prompt("Enter passcode to edit tags or pin tracks:");
+      if (code === null) return;
+      if (code === PASSCODE) { unlock(); return fn.apply(this, args); }
+      window.alert("Incorrect passcode.");
+    };
+  }
+
   const HIDDEN_KEY = "rotation:hidden";
   function getHidden() {
     try {
@@ -765,7 +782,7 @@
     hideBtn.title = "Pin (hide from list)";
     hideBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      hideTrack(track.vid);
+      guarded(() => hideTrack(track.vid))();
     });
     media.appendChild(hideBtn);
 
@@ -804,11 +821,11 @@
         rm.type = "button";
         rm.setAttribute("aria-label", "Remove tag " + tag);
         rm.textContent = "×";
-        rm.addEventListener("click", () => {
+        rm.addEventListener("click", guarded(() => {
           const next = getTags(track.vid).filter(t => t !== tag);
           setTags(track.vid, next);
           onTagChange();
-        });
+        }));
         chip.appendChild(label);
         chip.appendChild(rm);
         tagChips.appendChild(chip);
@@ -833,15 +850,16 @@
       }
       tagInput.value = "";
     }
+    const guardedCommitCustomTag = guarded(commitCustomTag);
     tagInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") commitCustomTag();
+      if (e.key === "Enter") guardedCommitCustomTag();
     });
     const tagAddBtn = document.createElement("button");
     tagAddBtn.type = "button";
     tagAddBtn.className = "tag-add-btn";
     tagAddBtn.textContent = "Add";
     tagAddBtn.setAttribute("aria-label", "Add custom tag for " + track.title);
-    tagAddBtn.addEventListener("click", commitCustomTag);
+    tagAddBtn.addEventListener("click", guardedCommitCustomTag);
     tagRow.appendChild(tagInput);
     tagRow.appendChild(tagAddBtn);
 
@@ -849,7 +867,7 @@
     presetSelect.className = "preset-select";
     presetSelect.setAttribute("aria-label", "Quick-add a genre tag for " + track.title);
     populatePresetSelect(presetSelect);
-    presetSelect.addEventListener("change", () => {
+    presetSelect.addEventListener("change", guarded(() => {
       const p = presetSelect.value;
       if (!p) return;
       const tags = getTags(track.vid);
@@ -859,7 +877,7 @@
         onTagChange();
       }
       presetSelect.value = "";
-    });
+    }));
 
     tagbox.appendChild(tagChips);
     tagbox.appendChild(tagRow);
@@ -926,7 +944,7 @@
       unpinBtn.textContent = "\u{1F4CC}";
       unpinBtn.setAttribute("aria-label", "Unpin " + track.title + " by " + track.artist + " — put it back on the board");
       unpinBtn.title = "Pin back to the board";
-      unpinBtn.addEventListener("click", () => unhideTrack(vid));
+      unpinBtn.addEventListener("click", guarded(() => unhideTrack(vid)));
       item.appendChild(thumb);
       item.appendChild(text);
       item.appendChild(unpinBtn);
