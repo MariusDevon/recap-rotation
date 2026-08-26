@@ -807,8 +807,8 @@
   statTotal.textContent = TRACKS.length;
   statArtists.textContent = new Set(TRACKS.map(t => t.artist)).size;
   dialNum.textContent = TRACKS.length;
-  refreshStats();
   TRACKS.forEach(t => { if (!getTags(t.vid).length && SEED_TAGS[t.vid]) setTags(t.vid, SEED_TAGS[t.vid]); });
+  refreshStats();
 
   renderTagFilterChips();
   render();
