@@ -283,6 +283,26 @@
     left: 10px;
     z-index: 2;
   }
+  .card-delete-btn {
+    position: absolute;
+    top: 44px;
+    left: 10px;
+    z-index: 2;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(0,0,0,.55);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background .15s, transform .15s;
+  }
+  .card-delete-btn:hover { background: #c0392b; transform: scale(1.08); }
+  .card-delete-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   .lyrics-btn, .hide-btn {
     position: absolute;
     top: 8px;
@@ -621,6 +641,9 @@
       Untagged only
     </label>
     <button class="copy-btn" id="copyBtn" type="button">Copy tags as JSON</button>
+    <button class="copy-btn" id="exportBtn" type="button">⬇ Export data</button>
+    <button class="copy-btn" id="importBtn" type="button">⬆ Import data</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
     <span class="count-pill" id="countPill"></span>
   </div>
 
@@ -760,6 +783,75 @@
     });
     return out;
   }
+
+  function gatherExportData() {
+    const tags = {};
+    allTracks().forEach(t => {
+      const tg = getTags(t.vid);
+      if (tg.length) tags[t.vid] = tg;
+    });
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      tags,
+      hidden: Array.from(getHidden()),
+      custom: getCustomTracks(),
+      deleted: Array.from(getDeleted())
+    };
+  }
+  function downloadJSON(obj, filename) {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function importAllData(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try {
+        data = JSON.parse(reader.result);
+        if (!data || typeof data !== "object") throw new Error("bad");
+      } catch (e) {
+        window.alert("That file doesn't look like a valid export.");
+        return;
+      }
+      if (data.tags && typeof data.tags === "object") {
+        Object.entries(data.tags).forEach(([vid, tg]) => {
+          if (Array.isArray(tg)) setTags(vid, tg);
+        });
+      }
+      if (Array.isArray(data.custom)) {
+        const existing = getCustomTracks();
+        data.custom.forEach(t => {
+          if (t && t.vid && !existing.some(e => e.vid === t.vid)) existing.push(t);
+        });
+        setCustomTracks(existing);
+      }
+      if (Array.isArray(data.hidden)) {
+        const h = getHidden();
+        data.hidden.forEach(v => h.add(v));
+        setHidden(h);
+      }
+      if (Array.isArray(data.deleted)) {
+        const d = getDeleted();
+        data.deleted.forEach(v => d.add(v));
+        setDeleted(d);
+      }
+      refreshTotals();
+      refreshStats();
+      renderTagFilterChips();
+      renderHiddenStrip();
+      render();
+      showToast("Data imported");
+    };
+    reader.readAsText(file);
+  }
   function allTagsInUse() {
     const counts = new Map();
     allTracks().forEach(t => {
@@ -854,6 +946,31 @@
     idxTag.className = "card-idx";
     idxTag.textContent = String(idx + 1).padStart(3, "0");
     media.appendChild(idxTag);
+
+    const cardDeleteBtn = document.createElement("button");
+    cardDeleteBtn.type = "button";
+    cardDeleteBtn.className = "card-delete-btn";
+    cardDeleteBtn.textContent = "\u{1F5D1}️";
+    cardDeleteBtn.setAttribute("aria-label", "Delete " + track.title + " by " + track.artist + " permanently");
+    cardDeleteBtn.title = "Delete permanently";
+    cardDeleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const ok = window.confirm("Delete \"" + track.title + "\" by " + track.artist + " permanently? This can't be undone.");
+      if (!ok) return;
+      const d = getDeleted();
+      d.add(track.vid);
+      setDeleted(d);
+      const h = getHidden();
+      h.delete(track.vid);
+      setHidden(h);
+      const custom = getCustomTracks().filter(t => t.vid !== track.vid);
+      setCustomTracks(custom);
+      refreshTotals();
+      renderTagFilterChips();
+      renderHiddenStrip();
+      render();
+    });
+    media.appendChild(cardDeleteBtn);
 
     const watchTile = document.createElement("button");
     watchTile.type = "button";
@@ -1149,6 +1266,17 @@
       catch (err) { showToast("Copy failed — select manually"); }
       document.body.removeChild(ta);
     }
+  });
+
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    downloadJSON(gatherExportData(), "marius-music-data.json");
+  });
+  const importFileInput = document.getElementById("importFile");
+  document.getElementById("importBtn").addEventListener("click", () => importFileInput.click());
+  importFileInput.addEventListener("change", () => {
+    const file = importFileInput.files[0];
+    if (file) importAllData(file);
+    importFileInput.value = "";
   });
 
   refreshTotals();
