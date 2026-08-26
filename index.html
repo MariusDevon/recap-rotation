@@ -349,17 +349,21 @@
   }
   .hidden-item .hi-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hidden-item .hi-artist { color: var(--text-dim); }
-  .hidden-item button {
+  .unpin-btn {
     flex: none;
-    border: 1px solid var(--accent-2);
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--accent-3);
     background: transparent;
-    color: var(--accent-2);
-    border-radius: 999px;
-    padding: 3px 10px;
-    font-size: 0.7rem;
+    color: var(--accent-3);
+    border-radius: 50%;
+    font-size: 0.85rem;
+    line-height: 1;
     cursor: pointer;
+    display: grid;
+    place-items: center;
   }
-  .hidden-item button:hover { background: var(--accent-2); color: var(--bg); }
+  .unpin-btn:hover { background: var(--accent-3); color: var(--bg); }
   .media {
     position: relative;
     aspect-ratio: 16/9;
@@ -756,9 +760,9 @@
     const hideBtn = document.createElement("button");
     hideBtn.type = "button";
     hideBtn.className = "hide-btn";
-    hideBtn.textContent = "\u{1F648}";
-    hideBtn.setAttribute("aria-label", "Hide " + track.title + " by " + track.artist);
-    hideBtn.title = "Hide this track";
+    hideBtn.textContent = "\u{1F4CC}";
+    hideBtn.setAttribute("aria-label", "Pin " + track.title + " by " + track.artist + " to the hidden shelf");
+    hideBtn.title = "Pin (hide from list)";
     hideBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       hideTrack(track.vid);
@@ -899,7 +903,7 @@
     if (!hidden.size) { hiddenStrip.innerHTML = ""; return; }
     const label = document.createElement("p");
     label.className = "hidden-strip-label";
-    label.textContent = "Hidden (" + hidden.size + ")";
+    label.textContent = "\u{1F4CC} Pinned (" + hidden.size + ")";
     const row = document.createElement("div");
     row.className = "hidden-row";
     Array.from(hidden).forEach(vid => {
@@ -921,7 +925,10 @@
       text.appendChild(artistSpan);
       const unpinBtn = document.createElement("button");
       unpinBtn.type = "button";
-      unpinBtn.textContent = "Unpin";
+      unpinBtn.className = "unpin-btn";
+      unpinBtn.textContent = "×";
+      unpinBtn.setAttribute("aria-label", "Unpin " + track.title + " by " + track.artist);
+      unpinBtn.title = "Unpin";
       unpinBtn.addEventListener("click", () => unhideTrack(vid));
       item.appendChild(thumb);
       item.appendChild(text);
