@@ -921,7 +921,7 @@
     return '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
   }
 
-  function makeCard(track, idx) {
+  function makeCard(track, idx, artistCounts) {
     const card = document.createElement("article");
     card.className = "card";
 
@@ -1033,7 +1033,8 @@
       render();
     });
     artist.appendChild(artistName);
-    artist.appendChild(artistFilterBtn);
+    const artistCount = artistCounts ? (artistCounts.get(track.artist) || 1) : 1;
+    if (artistCount > 1 || isArtistActive) artist.appendChild(artistFilterBtn);
 
     const tagbox = document.createElement("div");
     tagbox.className = "tagbox";
@@ -1148,8 +1149,10 @@
     const hidden = getHidden();
     const visibleTotal = all.length - hidden.size;
     const filtered = all.filter(t => matches(t, hidden));
+    const artistCounts = new Map();
+    all.forEach(t => artistCounts.set(t.artist, (artistCounts.get(t.artist) || 0) + 1));
     grid.innerHTML = "";
-    filtered.forEach(t => grid.appendChild(makeCard(t, all.indexOf(t))));
+    filtered.forEach(t => grid.appendChild(makeCard(t, all.indexOf(t), artistCounts)));
     emptyState.hidden = filtered.length !== 0;
     countPill.textContent = filtered.length + " / " + visibleTotal + " shown";
   }
