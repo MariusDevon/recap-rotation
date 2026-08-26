@@ -532,6 +532,29 @@
     });
     return Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }
+  function allKnownTags() {
+    const set = new Set(PRESETS);
+    allTagsInUse().forEach(([tag]) => set.add(tag));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }
+  function populatePresetSelect(select) {
+    const current = select.value;
+    select.innerHTML = "";
+    const placeholderOpt = document.createElement("option");
+    placeholderOpt.textContent = "+ Quick tag…";
+    placeholderOpt.value = "";
+    select.appendChild(placeholderOpt);
+    allKnownTags().forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      select.appendChild(opt);
+    });
+    select.value = current && allKnownTags().includes(current) ? current : "";
+  }
+  function refreshAllPresetSelects() {
+    document.querySelectorAll(".preset-select").forEach(populatePresetSelect);
+  }
 
   const state = { search: "", tag: null, untaggedOnly: false };
 
@@ -629,6 +652,7 @@
       renderChips();
       refreshStats();
       renderTagFilterChips();
+      refreshAllPresetSelects();
     }
 
     function renderChips() {
@@ -686,16 +710,7 @@
     const presetSelect = document.createElement("select");
     presetSelect.className = "preset-select";
     presetSelect.setAttribute("aria-label", "Quick-add a genre tag for " + track.title);
-    const placeholderOpt = document.createElement("option");
-    placeholderOpt.textContent = "+ Quick tag…";
-    placeholderOpt.value = "";
-    presetSelect.appendChild(placeholderOpt);
-    PRESETS.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p;
-      opt.textContent = p;
-      presetSelect.appendChild(opt);
-    });
+    populatePresetSelect(presetSelect);
     presetSelect.addEventListener("change", () => {
       const p = presetSelect.value;
       if (!p) return;
