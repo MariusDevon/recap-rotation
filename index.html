@@ -1,4 +1,4 @@
-<title>Marius Music</title>
+<title>Music Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -603,9 +603,9 @@
   <div class="hero">
     <div class="dial" aria-hidden="true"><span class="dial-num" id="dialNum">133</span></div>
     <div class="hero-text">
-      <p class="eyebrow">Marius Mans &middot; YouTube Music</p>
-      <h1>Marius Music</h1>
-      <p class="hero-sub">Every track pulled from your YouTube Music library, deduplicated into one crate. Tap through to YouTube, tag the genre or mood, work through the pile.</p>
+      <p class="eyebrow">YouTube Music Board</p>
+      <h1>Music Board</h1>
+      <p class="hero-sub">Add any YouTube video by pasting its link, tag it by genre or mood, and pin the ones you're focused on. Everything stays in your browser — export it any time to back up or move to another device.</p>
       <div class="hero-stats">
         <div class="stat"><b id="statTotal">0</b><span>Unique tracks</span></div>
         <div class="stat"><b id="statTagged">0</b><span>Tagged so far</span></div>
@@ -622,7 +622,6 @@
       <input type="checkbox" id="unclassifiedOnly">
       Untagged only
     </label>
-    <button class="copy-btn" id="copyBtn" type="button">Copy tags as JSON</button>
     <button class="copy-btn" id="exportBtn" type="button">⬇ Export data</button>
     <button class="copy-btn" id="importBtn" type="button">⬆ Import data</button>
     <input type="file" id="importFile" accept="application/json" hidden>
@@ -637,8 +636,8 @@
   <div class="hidden-strip" id="hiddenStrip"></div>
 
   <footer>
-    <span>Tags save privately to this browser (localStorage) &mdash; nothing is sent anywhere.</span>
-    <span>Built from your YouTube Music library, 2026.</span>
+    <span>Everything you add, tag, pin, or delete here is saved only in this browser &mdash; nothing is sent anywhere. Use Export / Import to move your board to another device or back it up.</span>
+    <span>Paste any YouTube link with the + button to add a video.</span>
   </footer>
 </div>
 
@@ -757,14 +756,6 @@
     render();
   }
 
-  function allTagData() {
-    const out = {};
-    allTracks().forEach(t => {
-      const tags = getTags(t.vid);
-      if (tags.length) out[t.vid] = { title: t.title, artist: t.artist, tags };
-    });
-    return out;
-  }
 
   function gatherExportData() {
     const tags = {};
@@ -1254,24 +1245,6 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
   }
-
-  document.getElementById("copyBtn").addEventListener("click", async () => {
-    const data = JSON.stringify(allTagData(), null, 2);
-    try {
-      await navigator.clipboard.writeText(data);
-      showToast("Copied tags to clipboard");
-    } catch (e) {
-      const ta = document.createElement("textarea");
-      ta.value = data;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand("copy"); showToast("Copied tags to clipboard"); }
-      catch (err) { showToast("Copy failed — select manually"); }
-      document.body.removeChild(ta);
-    }
-  });
 
   document.getElementById("exportBtn").addEventListener("click", exportAllData);
   const importFileInput = document.getElementById("importFile");
