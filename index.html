@@ -567,7 +567,7 @@
     padding: 2px 5px;
   }
   .tag-chip button:hover { color: var(--accent-3); }
-  .tag-row { display: flex; gap: 6px; }
+  .tag-row { display: flex; gap: 6px; margin-top: 8px; }
   .tag-row input {
     flex: 1;
     min-width: 0;
@@ -1187,8 +1187,8 @@
     });
 
     tagbox.appendChild(tagChips);
-    tagbox.appendChild(tagRow);
     tagbox.appendChild(presetSelect);
+    tagbox.appendChild(tagRow);
 
     body.appendChild(title);
     body.appendChild(artist);
