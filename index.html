@@ -311,7 +311,7 @@
     left: 10px;
     z-index: 2;
   }
-  .lyrics-btn, .hide-btn, .card-delete-btn {
+  .lyrics-btn, .hide-btn, .card-delete-btn, .open-yt-btn {
     position: absolute;
     top: 8px;
     z-index: 2;
@@ -332,10 +332,12 @@
   .lyrics-btn { right: 8px; }
   .hide-btn { right: 44px; }
   .card-delete-btn { right: 80px; }
+  .open-yt-btn { right: 116px; }
   .card-delete-btn:hover { background: #c0392b; transform: scale(1.08); }
   .lyrics-btn:hover { background: var(--accent-3); transform: scale(1.08); }
   .hide-btn:hover { background: var(--accent-2); transform: scale(1.08); }
-  .lyrics-btn:focus-visible, .hide-btn:focus-visible, .card-delete-btn:focus-visible {
+  .open-yt-btn:hover { background: #cc0000; transform: scale(1.08); }
+  .lyrics-btn:focus-visible, .hide-btn:focus-visible, .card-delete-btn:focus-visible, .open-yt-btn:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
@@ -1051,6 +1053,17 @@
       media.appendChild(iframe);
     });
     media.appendChild(watchTile);
+
+    const openYtBtn = document.createElement("a");
+    openYtBtn.className = "open-yt-btn";
+    openYtBtn.href = "https://www.youtube.com/watch?v=" + encodeURIComponent(track.vid);
+    openYtBtn.target = "_blank";
+    openYtBtn.rel = "noopener noreferrer";
+    openYtBtn.textContent = "▶";
+    openYtBtn.setAttribute("aria-label", "Watch " + track.title + " by " + track.artist + " ad-free on YouTube");
+    openYtBtn.title = "Watch ad-free on YouTube";
+    openYtBtn.addEventListener("click", (e) => e.stopPropagation());
+    media.appendChild(openYtBtn);
 
     const lyricsBtn = document.createElement("a");
     lyricsBtn.className = "lyrics-btn";
